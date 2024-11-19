@@ -152,13 +152,6 @@ st.set_page_config(
     page_title="Unit Strength",
     )
 
-# load in smoothed averages dataframe
-smoothed_url = "https://raw.githubusercontent.com/fofota/fof_html_scraper/main/smoothed_avg.csv"
-smoothed_avg = pd.read_csv(smoothed_url)
-if 'wins.1' in smoothed_avg.columns:
-    smoothed_avg = smoothed_avg.drop(columns=['wins.1'])
-smoothed_avg.reset_index(drop=True, inplace=True)
-
 # Streamlit App
 st.title("RZB Team Stats Evaluator")
 st.sidebar.header("Options")
@@ -170,67 +163,62 @@ st.sidebar.write(f"Most recent year available: {most_recent_year}")
 # Step 2: Select year
 selected_year = st.sidebar.selectbox("Select year to scrape", range(most_recent_year, most_recent_year - 10, -1))
 st.write("Use the sidebar to select which year to evaluate")
+st.write(f"Scraping data for the year: {selected_year}")
 
-data = scrape_year(selected_year)
+# Step 3: Scrape data for the selected year
+if st.sidebar.button("Scrape Data"):
+    with st.spinner("Scraping data..."):
+        data = scrape_year(selected_year)
 
-# Filter and rename columns
-columns_to_keep = {
-    "1Team": "team",
-    "3Yards": "run_yds",
-    "4Avg": "ypc",
-    "14Yards_vs": "run_yds_vs",
-    "15Avg_vs": "ypc_vs",
-    "24Att": "Att",
-    "27Yards_PassingOffense": "pass_yds",
-    "29Yds/A": "ypt",
-    "31Rate": "Rate",
-    "32PPly": "Pply",
-    "36Att_vs": "Att_vs",
-    "39Yards_vs": "pass_yds_vs",
-    "41Yds/A_vs": "ypt_vs",
-    "43Rate_vs": "Rate_vs",
-    "46OpPDPct_vs": "PDPct",
-    "72KRB": "KRB",
-    "75RPly": "Rply",
-    "80SPct": "SPct",
-    "84KRB_vs": "KRB_vs",
-    "87RPly_vs": "Rply_vs",
-    "92SPct_vs": "SPct_vs",
-    "131Pnlty": "Pnlty",
-    "154Avg_Kicking": "Punt_for",
-    "156Avg_Kicking": "Net_punt",
-    "167Avg_vs": "Net_punt_vs",
-    "169Avg_Returns": "PR_avg",
-    "171Avg_Returns": "KR_avg",
-    "173Avg_Returns": "OppPR_avg",
-    "175Avg_Returns": "OppKR_avg",
-    "178Yds/G": "yds_per_game",
-    "179OpYds/G": "ydsvs_per_game",
-    "180Fum": "Fum",
-    "181Int": "Int",
-    "184Int": "Int_vs",
-    "187W": "W",
-    "188L": "L",
-    "189T": "T",
-    "190PF": "PF",
-    "191PA": "PA",
-    "192Wins": "wins",
-    "193pythag_wins": "pythag_wins",
-    "194Year": "year"
-    }
+        # Filter and rename columns
+        columns_to_keep = {
+            "1Team": "team",
+            "3Yards": "run_yds",
+            "4Avg": "ypc",
+            "14Yards_vs": "run_yds_vs",
+            "15Avg_vs": "ypc_vs",
+            "24Att": "Att",
+            "27Yards_PassingOffense": "pass_yds",
+            "29Yds/A": "ypt",
+            "31Rate": "Rate",
+            "32PPly": "Pply",
+            "36Att_vs": "Att_vs",
+            "39Yards_vs": "pass_yds_vs",
+            "41Yds/A_vs": "ypt_vs",
+            "43Rate_vs": "Rate_vs",
+            "46OpPDPct_vs": "PDPct",
+            "72KRB": "KRB",
+            "75RPly": "Rply",
+            "80SPct": "SPct",
+            "84KRB_vs": "KRB_vs",
+            "87RPly_vs": "Rply_vs",
+            "92SPct_vs": "SPct_vs",
+            "131Pnlty": "Pnlty",
+            "154Avg_Kicking": "Punt_for",
+            "156Avg_Kicking": "Net_punt",
+            "167Avg_vs": "Net_punt_vs",
+            "169Avg_Returns": "PR_avg",
+            "171Avg_Returns": "KR_avg",
+            "173Avg_Returns": "OppPR_avg",
+            "175Avg_Returns": "OppKR_avg",
+            "178Yds/G": "yds_per_game",
+            "179OpYds/G": "ydsvs_per_game",
+            "180Fum": "Fum",
+            "181Int": "Int",
+            "184Int": "Int_vs",
+            "187W": "W",
+            "188L": "L",
+            "189T": "T",
+            "190PF": "PF",
+            "191PA": "PA",
+            "192Wins": "wins",
+            "193pythag_wins": "pythag_wins",
+            "194Year": "year"
+        }
+        
+        filtered_data = data[list(columns_to_keep.keys())]
+        filtered_data = filtered_data.rename(columns=columns_to_keep)
 
-filtered_data = data[list(columns_to_keep.keys())]
-filtered_data = filtered_data.rename(columns=columns_to_keep)
-
-# Sidebar: Dropdown for team selection
-team_list = filtered_data["team"].unique()
-default_team = "New York (A) Jets" if "New York (A) Jets" in team_list else team_list[0]
-selected_team = st.sidebar.selectbox("Select a team", team_list, index=team_list.tolist().index(default_team))
-
-# Step 3: Analyze team button
-if st.sidebar.button("Analyze Team"):
-    with st.spinner("Analysing team data..."):
-                
         # Convert columns and calculate additional stats
         filtered_data.iloc[:, 1:] = filtered_data.iloc[:, 1:].apply(pd.to_numeric, errors="coerce")
         filtered_data["Int_per_Att"] = ((filtered_data["Int"] / filtered_data["Att"]) * 100).round(2)
@@ -286,34 +274,26 @@ if st.sidebar.button("Analyze Team"):
             if column in filtered_data.columns:
                 filtered_data[column] = filtered_data[column].round(decimals)
         
+        # Dropdown for team selection, with NY as the default option
+        default_team = "New York (A) Jets"
+        team_list = filtered_data["team"].unique()
+        default_index = list(team_list).index(default_team) if default_team in team_list else 0
+        selected_team = st.sidebar.selectbox("Select a team", team_list, index=default_index)
 
         # Filter data for the selected team and display
         team_data = filtered_data[filtered_data["team"] == selected_team]
         team_data['year'] = team_data['year'].astype(int)
-        
         # Filter columns and apply rounding for team_data
         team_data = team_data[columns_to_include]
         for column, decimals in rounding_rules.items():
             if column in team_data.columns:
                 team_data[column] = team_data[column].round(decimals)
-        
+        st.write(f"Metrics for the selected team: {selected_team}")
+        st.dataframe(team_data.set_index("team"))
+
         # Display filtered data
         st.success("Data scraping complete!")
-        
-        # Predict Wins
-        if not team_data.empty:
-            predictions = predict_wins_all_metrics(smoothed_avg, team_data)
-            st.write(f"Predicted Wins for Team: {selected_team}")
-            predictions_df = pd.DataFrame.from_dict(predictions, orient="index", columns=["Predicted Wins"])
-            st.dataframe(predictions_df)
-
-            # Display team metrics
-            st.write(f"Metrics for the selected team: {selected_team}")
-            st.dataframe(team_data.set_index("team"))
-        else:
-            st.error("Team data is not available.")
-            
-        st.write(f"Team-by-team Data for {most_recent_year}")
+        st.write(f"Team-by-team Data for season: {most_recent_year}")
         filtered_data['year'] = filtered_data['year'].astype(int)
         st.dataframe(filtered_data.set_index(filtered_data.columns[0]))
 
@@ -327,4 +307,9 @@ if st.sidebar.button("Analyze Team"):
         )
 
 st.write("Historic team averages by number of team wins, smoothed to simplify analysis")
+smoothed_url = "https://raw.githubusercontent.com/fofota/fof_html_scraper/main/smoothed_avg.csv"
+smoothed_avg = pd.read_csv(smoothed_url)
+if 'wins.1' in smoothed_avg.columns:
+    smoothed_avg = smoothed_avg.drop(columns=['wins.1'])
+smoothed_avg.reset_index(drop=True, inplace=True)
 st.dataframe(smoothed_avg.set_index(smoothed_avg.columns[0]))
