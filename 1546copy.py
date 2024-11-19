@@ -197,51 +197,6 @@ if st.sidebar.button("Scrape Data"):
         filtered_data["Pen_per_snap"] = ((filtered_data["Pnlty"] / (filtered_data["Pply"] + filtered_data["Rply"])) * 100).round(1)
         filtered_data["Ydsgain_per_game"] = filtered_data["yds_per_game"] - filtered_data["ydsvs_per_game"]
 
-        columns_to_include = [
-            'team', 'year', 'pythag_wins', 'wins', 'yds_per_game', 
-            'ydsvs_per_game', 'Pen_per_snap', 'Fum_per_snap', 'Rate', 'ypt', 
-            'Int_per_Att', 'SPct', 'ypc', 'KRB_per_Rply', 'Rate_vs', 'PDPct', 
-            'Intvs_per_Att', 'ypt_vs', 'SPct_vs', 'KRBvs_per_Rply', 'ypc_vs', 
-            'PR_avg', 'KR_avg', 'Net_punt_vs', 'OppPR_avg', 'OppKR_avg', 
-            'Net_punt', 'Punt_for'
-        ]
-
-        rounding_rules = {
-            'year': 0,
-            'pythag_wins': 1,
-            'wins': 0,
-            'yds_per_game': 1,
-            'ydsvs_per_game': 1,
-            'Pen_per_snap': 1,
-            'Fum_per_snap': 3,
-            'Rate': 1,
-            'ypt': 2,
-            'Int_per_Att': 2,
-            'SPct': 2,
-            'ypc': 2,
-            'KRB_per_Rply': 1,
-            'Rate_vs': 1,
-            'PDPct': 1,
-            'Intvs_per_Att': 2,
-            'ypt_vs': 2,
-            'SPct_vs': 2,
-            'KRBvs_per_Rply': 1,
-            'ypc_vs': 2,
-            'PR_avg': 1,
-            'KR_avg': 1,
-            'Net_punt_vs': 1,
-            'OppPR_avg': 1,
-            'OppKR_avg': 1,
-            'Net_punt': 1,
-            'Punt_for': 1
-        }
-        
-        # Filter columns and apply rounding for filtered_data
-        filtered_data = filtered_data[columns_to_include]
-        for column, decimals in rounding_rules.items():
-            if column in filtered_data.columns:
-                filtered_data[column] = filtered_data[column].round(decimals)
-        
         # Dropdown for team selection, with NY as the default option
         default_team = "New York (A) Jets"
         team_list = filtered_data["team"].unique()
@@ -250,19 +205,13 @@ if st.sidebar.button("Scrape Data"):
 
         # Filter data for the selected team and display
         team_data = filtered_data[filtered_data["team"] == selected_team]
-        team_data['year'] = team_data['year'].astype(int)
-        # Filter columns and apply rounding for team_data
-        team_data = team_data[columns_to_include]
-        for column, decimals in rounding_rules.items():
-            if column in team_data.columns:
-                team_data[column] = team_data[column].round(decimals)
         st.write(f"Metrics for the selected team: {selected_team}")
         st.dataframe(team_data.set_index("team"))
 
         # Display filtered data
         st.success("Data scraping complete!")
         st.write(f"Team-by-team Data for season: {most_recent_year}")
-        filtered_data['year'] = filtered_data['year'].astype(int)
+
         st.dataframe(filtered_data.set_index(filtered_data.columns[0]))
 
         # Allow CSV download
