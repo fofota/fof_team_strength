@@ -148,6 +148,18 @@ def predict_wins_all_metrics(smoothed_avg, team_data):
     
     return predictions
 
+# Function to color text in the "Avg Wins" column based on the value ranges
+def color_wins_column(val):
+    if 1 <= val <= 4:
+        return "color: #ff4d4d;"  # Red
+    elif 5 <= val <= 8:
+        return "color: #ffcc00;"  # Amber
+    elif 9 <= val <= 12:
+        return "color: #b3ffb3;"  # Light Green
+    elif 13 <= val <= 16:
+        return "color: #33cc33;"  # Dark Green
+    return ""
+
 st.set_page_config(
     page_title="Unit Strength",
     )
@@ -222,6 +234,54 @@ columns_to_keep = {
 filtered_data = data[list(columns_to_keep.keys())]
 filtered_data = filtered_data.rename(columns=columns_to_keep)
 
+filtered_data.iloc[:, 1:] = filtered_data.iloc[:, 1:].apply(pd.to_numeric, errors="coerce")
+filtered_data["Int_per_Att"] = ((filtered_data["Int"] / filtered_data["Att"]) * 100).round(2)
+filtered_data["Intvs_per_Att"] = ((filtered_data["Int_vs"] / filtered_data["Att_vs"]) * 100).round(2)
+filtered_data["Fum_per_snap"] = ((filtered_data["Fum"] / (filtered_data["Pply"] + filtered_data["Rply"])) * 100).round(3)
+filtered_data["KRB_per_Rply"] = ((filtered_data["KRB"] / filtered_data["Rply"]) * 100).round(1)
+filtered_data["KRBvs_per_Rply"] = ((filtered_data["KRB_vs"] / filtered_data["Rply_vs"]) * 100).round(1)
+filtered_data["Pen_per_snap"] = ((filtered_data["Pnlty"] / (filtered_data["Pply"] + filtered_data["Rply"])) * 100).round(1)
+filtered_data["Ydsgain_per_game"] = filtered_data["yds_per_game"] - filtered_data["ydsvs_per_game"]
+
+columns_to_include = [
+    'team', 'year', 'pythag_wins', 'wins', 'yds_per_game', 
+    'ydsvs_per_game', 'Pen_per_snap', 'Fum_per_snap', 'Rate', 'ypt', 
+    'Int_per_Att', 'SPct', 'ypc', 'KRB_per_Rply', 'Rate_vs', 'PDPct', 
+    'Intvs_per_Att', 'ypt_vs', 'SPct_vs', 'KRBvs_per_Rply', 'ypc_vs', 
+    'PR_avg', 'KR_avg', 'Net_punt_vs', 'OppPR_avg', 'OppKR_avg', 
+    'Net_punt', 'Punt_for'
+]
+
+rounding_rules = {
+    'year': 0,
+    'pythag_wins': 1,
+    'wins': 0,
+    'yds_per_game': 1,
+    'ydsvs_per_game': 1,
+    'Pen_per_snap': 1,
+    'Fum_per_snap': 3,
+    'Rate': 1,
+    'ypt': 2,
+    'Int_per_Att': 2,
+    'SPct': 2,
+    'ypc': 2,
+    'KRB_per_Rply': 1,
+    'Rate_vs': 1,
+    'PDPct': 1,
+    'Intvs_per_Att': 2,
+    'ypt_vs': 2,
+    'SPct_vs': 2,
+    'KRBvs_per_Rply': 1,
+    'ypc_vs': 2,
+    'PR_avg': 1,
+    'KR_avg': 1,
+    'Net_punt_vs': 1,
+    'OppPR_avg': 1,
+    'OppKR_avg': 1,
+    'Net_punt': 1,
+    'Punt_for': 1
+}
+
 # Sidebar: Dropdown for team selection
 team_list = filtered_data["team"].unique()
 default_team = "New York (A) Jets" if "New York (A) Jets" in team_list else team_list[0]
@@ -231,62 +291,12 @@ selected_team = st.sidebar.selectbox("Select a team", team_list, index=team_list
 if st.sidebar.button("Analyze Team"):
     with st.spinner("Analysing team data..."):
                 
-        # Convert columns and calculate additional stats
-        filtered_data.iloc[:, 1:] = filtered_data.iloc[:, 1:].apply(pd.to_numeric, errors="coerce")
-        filtered_data["Int_per_Att"] = ((filtered_data["Int"] / filtered_data["Att"]) * 100).round(2)
-        filtered_data["Intvs_per_Att"] = ((filtered_data["Int_vs"] / filtered_data["Att_vs"]) * 100).round(2)
-        filtered_data["Fum_per_snap"] = ((filtered_data["Fum"] / (filtered_data["Pply"] + filtered_data["Rply"])) * 100).round(3)
-        filtered_data["KRB_per_Rply"] = ((filtered_data["KRB"] / filtered_data["Rply"]) * 100).round(1)
-        filtered_data["KRBvs_per_Rply"] = ((filtered_data["KRB_vs"] / filtered_data["Rply_vs"]) * 100).round(1)
-        filtered_data["Pen_per_snap"] = ((filtered_data["Pnlty"] / (filtered_data["Pply"] + filtered_data["Rply"])) * 100).round(1)
-        filtered_data["Ydsgain_per_game"] = filtered_data["yds_per_game"] - filtered_data["ydsvs_per_game"]
-
-        columns_to_include = [
-            'team', 'year', 'pythag_wins', 'wins', 'yds_per_game', 
-            'ydsvs_per_game', 'Pen_per_snap', 'Fum_per_snap', 'Rate', 'ypt', 
-            'Int_per_Att', 'SPct', 'ypc', 'KRB_per_Rply', 'Rate_vs', 'PDPct', 
-            'Intvs_per_Att', 'ypt_vs', 'SPct_vs', 'KRBvs_per_Rply', 'ypc_vs', 
-            'PR_avg', 'KR_avg', 'Net_punt_vs', 'OppPR_avg', 'OppKR_avg', 
-            'Net_punt', 'Punt_for'
-        ]
-
-        rounding_rules = {
-            'year': 0,
-            'pythag_wins': 1,
-            'wins': 0,
-            'yds_per_game': 1,
-            'ydsvs_per_game': 1,
-            'Pen_per_snap': 1,
-            'Fum_per_snap': 3,
-            'Rate': 1,
-            'ypt': 2,
-            'Int_per_Att': 2,
-            'SPct': 2,
-            'ypc': 2,
-            'KRB_per_Rply': 1,
-            'Rate_vs': 1,
-            'PDPct': 1,
-            'Intvs_per_Att': 2,
-            'ypt_vs': 2,
-            'SPct_vs': 2,
-            'KRBvs_per_Rply': 1,
-            'ypc_vs': 2,
-            'PR_avg': 1,
-            'KR_avg': 1,
-            'Net_punt_vs': 1,
-            'OppPR_avg': 1,
-            'OppKR_avg': 1,
-            'Net_punt': 1,
-            'Punt_for': 1
-        }
-        
         # Filter columns and apply rounding for filtered_data
         filtered_data = filtered_data[columns_to_include]
         for column, decimals in rounding_rules.items():
             if column in filtered_data.columns:
                 filtered_data[column] = filtered_data[column].round(decimals)
         
-
         # Filter data for the selected team and display
         team_data = filtered_data[filtered_data["team"] == selected_team]
         team_data['year'] = team_data['year'].astype(int)
@@ -303,9 +313,38 @@ if st.sidebar.button("Analyze Team"):
         # Predict Wins
         if not team_data.empty:
             predictions = predict_wins_all_metrics(smoothed_avg, team_data)
-            st.write(f"Predicted Wins for Team: {selected_team}")
-            predictions_df = pd.DataFrame.from_dict(predictions, orient="index", columns=["Predicted Wins"])
-            st.dataframe(predictions_df)
+            st.write(f"Quality of metrics for Team: {selected_team}")
+
+            # Convert predictions to a DataFrame
+            predictions_df = pd.DataFrame.from_dict(predictions, orient="index", columns=["Avg Wins"])
+
+            # Add the corresponding metric values from team_data as strings
+            predictions_df["Metric Value"] = predictions_df.index.map(
+                lambda metric: str(team_data[metric].values[0]) if metric in team_data.columns else None
+            )
+            
+            # Reset the index to make "Metric" a column
+            predictions_df.reset_index(inplace=True)
+            predictions_df.rename(columns={"index": "Metric"}, inplace=True)
+
+            # Reorder columns to Metric, Metric Value, Avg Wins
+            predictions_df = predictions_df[["Metric", "Metric Value", "Avg Wins"]]
+            
+            # Apply the coloring to the "Avg Wins" column
+            styled_predictions_df = predictions_df.style.applymap(
+                color_wins_column, subset=["Avg Wins"]
+            )
+
+            # Set index before applying the style
+            predictions_df = predictions_df.set_index("Metric")
+
+            # Apply the text coloring to the "Avg Wins" column
+            styled_predictions_df = predictions_df.style.applymap(
+                color_wins_column, subset=["Avg Wins"]
+            )
+            
+            # Display the styled DataFrame
+            st.dataframe(styled_predictions_df)
 
             # Display team metrics
             st.write(f"Metrics for the selected team: {selected_team}")
@@ -315,16 +354,7 @@ if st.sidebar.button("Analyze Team"):
             
         st.write(f"Team-by-team Data for {most_recent_year}")
         filtered_data['year'] = filtered_data['year'].astype(int)
-        st.dataframe(filtered_data.set_index(filtered_data.columns[0]))
-
-        # Allow CSV download
-        csv = filtered_data.to_csv(index=False).encode('utf-8')
-        st.download_button(
-            label="Download CSV",
-            data=csv,
-            file_name=f"filtered_stats_{selected_year}.csv",
-            mime="text/csv"
-        )
+        st.dataframe(filtered_data.set_index(filtered_data.columns[0]))    
 
 st.write("Historic team averages by number of team wins, smoothed to simplify analysis")
 st.dataframe(smoothed_avg.set_index(smoothed_avg.columns[0]))
