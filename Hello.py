@@ -3,6 +3,7 @@ import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 
+
 # Function to determine the most recent year
 def get_most_recent_year():
     url_index = "https://therzb.com/RZB/leaguehtml/index.html"
@@ -160,30 +161,12 @@ def color_wins_column(val):
         return "color: #33cc33;"  # Dark Green
     return ""
 
-st.set_page_config(
-    page_title="Unit Strength",
-    )
-
 # load in smoothed averages dataframe
 smoothed_url = "https://raw.githubusercontent.com/fofota/fof_html_scraper/main/smoothed_avg.csv"
 smoothed_avg = pd.read_csv(smoothed_url)
 if 'wins.1' in smoothed_avg.columns:
     smoothed_avg = smoothed_avg.drop(columns=['wins.1'])
 smoothed_avg.reset_index(drop=True, inplace=True)
-
-# Streamlit App
-st.title("RZB Team Stats Evaluator")
-st.sidebar.header("Options")
-
-# Step 1: Get the most recent year
-most_recent_year = get_most_recent_year()
-st.sidebar.write(f"Most recent year available: {most_recent_year}")
-
-# Step 2: Select year
-selected_year = st.sidebar.selectbox("Select year to scrape", range(most_recent_year, most_recent_year - 10, -1))
-st.write("Use the sidebar to select which year to evaluate")
-
-data = scrape_year(selected_year)
 
 # Filter and rename columns
 columns_to_keep = {
@@ -231,18 +214,6 @@ columns_to_keep = {
     "194Year": "year"
     }
 
-filtered_data = data[list(columns_to_keep.keys())]
-filtered_data = filtered_data.rename(columns=columns_to_keep)
-
-filtered_data.iloc[:, 1:] = filtered_data.iloc[:, 1:].apply(pd.to_numeric, errors="coerce")
-filtered_data["Int_per_Att"] = ((filtered_data["Int"] / filtered_data["Att"]) * 100).round(2)
-filtered_data["Intvs_per_Att"] = ((filtered_data["Int_vs"] / filtered_data["Att_vs"]) * 100).round(2)
-filtered_data["Fum_per_snap"] = ((filtered_data["Fum"] / (filtered_data["Pply"] + filtered_data["Rply"])) * 100).round(3)
-filtered_data["KRB_per_Rply"] = ((filtered_data["KRB"] / filtered_data["Rply"]) * 100).round(1)
-filtered_data["KRBvs_per_Rply"] = ((filtered_data["KRB_vs"] / filtered_data["Rply_vs"]) * 100).round(1)
-filtered_data["Pen_per_snap"] = ((filtered_data["Pnlty"] / (filtered_data["Pply"] + filtered_data["Rply"])) * 100).round(1)
-filtered_data["Ydsgain_per_game"] = filtered_data["yds_per_game"] - filtered_data["ydsvs_per_game"]
-
 columns_to_include = [
     'team', 'year', 'pythag_wins', 'wins', 'yds_per_game', 
     'ydsvs_per_game', 'Pen_per_snap', 'Fum_per_snap', 'Rate', 'ypt', 
@@ -259,7 +230,6 @@ rounding_rules = {
     'yds_per_game': 1,
     'ydsvs_per_game': 1,
     'Pen_per_snap': 1,
-    'Fum_per_snap': 3,
     'Rate': 1,
     'ypt': 2,
     'Int_per_Att': 2,
@@ -282,21 +252,65 @@ rounding_rules = {
     'Punt_for': 1
 }
 
-# Sidebar: Dropdown for team selection
+# Streamlit App
+st.set_page_config(
+    page_title="RZB Team Stats Benchmarking",
+    layout='wide'
+)
+st.title("RZB Team Stats Benchmarking")
+st.sidebar.header("Select Team to Evaluate")
+
+with st.expander("Use the sidebar to select a team to evaluate. Open here for more on how this tool works"):
+    st.write('''
+        This tool answers the question 'how good is my team' by comparing its statistical performance against historic benchmarks.
+        
+        What the tool does:
+        1. Collects team-level statistics from the RZB html website for a selected team and year (e.g. the 2064 New York Jets)
+        2. Compares vs historic benchmarks for 2045-64, which is the current 'tzach patch' era
+        3. Provides an assessment of unit strength and overall team quality
+        
+        The benchmarks are measured in 'average wins' for a regular season:
+        1. For the 2045-64 seasons all teams were grouped by regular season wins and then mean averages calculated for each metric (e.g. 'what was the average yards per target (ypt) for all teams with a 7-win record?')
+        2. To simplify the analysis, a smoothed 'one way' line was fitted to the data for each metric manually
+        3. This tool then uses that smoothed average line to compare the regular season record of a selected team, i.e. the 2064 New York Jets, to the historic benchmarks
+        ''')
+
+# Get the most recent year
+most_recent_year = get_most_recent_year()
+
+# Select year in sidebar
+selected_year = st.sidebar.selectbox("Select season", range(most_recent_year, 2044, -1))
+data = scrape_year(selected_year)
+
+# process the scraped data for that year and add additional columns
+filtered_data = data[list(columns_to_keep.keys())]
+filtered_data = filtered_data.rename(columns=columns_to_keep)
+filtered_data.iloc[:, 1:] = filtered_data.iloc[:, 1:].apply(pd.to_numeric, errors="coerce")
+filtered_data[["Att", "Att_vs", "Int", "Int_vs", "Fum", "Pply", "Rply", "Pnlty", "KRB", "KRB_vs", "Rply_vs", "yds_per_game", "ydsvs_per_game"]] = filtered_data[["Att", "Att_vs", "Int", "Int_vs", "Fum", "Pply", "Rply", "Pnlty", "KRB", "KRB_vs", "Rply_vs", "yds_per_game", "ydsvs_per_game"]].apply(pd.to_numeric, errors="coerce")
+filtered_data["SPct"] = pd.to_numeric(filtered_data["SPct"], errors="coerce")
+filtered_data["Int_per_Att"] = ((filtered_data["Int"] / filtered_data["Att"]) * 100).round(2)
+filtered_data["Intvs_per_Att"] = ((filtered_data["Int_vs"] / filtered_data["Att_vs"]) * 100).round(2)
+filtered_data["Fum_per_snap"] = ((filtered_data["Fum"] / (filtered_data["Pply"] + filtered_data["Rply"])) * 100).round(3)
+filtered_data["KRB"] = pd.to_numeric(filtered_data["KRB"], errors="coerce")
+filtered_data["KRB_per_Rply"] = ((filtered_data["KRB"] / filtered_data["Rply"]) * 100).round(1)
+filtered_data["KRBvs_per_Rply"] = ((filtered_data["KRB_vs"] / filtered_data["Rply_vs"]) * 100).round(1)
+filtered_data["Pen_per_snap"] = ((filtered_data["Pnlty"] / (filtered_data["Pply"] + filtered_data["Rply"])) * 100).round(1)
+filtered_data["Ydsgain_per_game"] = filtered_data["yds_per_game"] - filtered_data["ydsvs_per_game"]
+filtered_data = filtered_data[filtered_data['team'] != 'League'] # remove league averages
+filtered_data = filtered_data[columns_to_include]
+for column, decimals in rounding_rules.items():
+    if column in filtered_data.columns:
+        filtered_data[column] = filtered_data[column].round(decimals)
+
+# Select team in sidebar
 team_list = filtered_data["team"].unique()
 default_team = "New York (A) Jets" if "New York (A) Jets" in team_list else team_list[0]
-selected_team = st.sidebar.selectbox("Select a team", team_list, index=team_list.tolist().index(default_team))
+selected_team = st.sidebar.selectbox("Select team", team_list, index=team_list.tolist().index(default_team))
 
-# Step 3: Analyze team button
+# When analyse team button is clicked
 if st.sidebar.button("Analyze Team"):
-    with st.spinner("Analysing team data..."):
+    with st.spinner("Collecting and Analysing team data..."):
                 
-        # Filter columns and apply rounding for filtered_data
-        filtered_data = filtered_data[columns_to_include]
-        for column, decimals in rounding_rules.items():
-            if column in filtered_data.columns:
-                filtered_data[column] = filtered_data[column].round(decimals)
-        
         # Filter data for the selected team and display
         team_data = filtered_data[filtered_data["team"] == selected_team]
         team_data['year'] = team_data['year'].astype(int)
@@ -313,48 +327,40 @@ if st.sidebar.button("Analyze Team"):
         # Predict Wins
         if not team_data.empty:
             predictions = predict_wins_all_metrics(smoothed_avg, team_data)
-            st.write(f"Quality of metrics for Team: {selected_team}")
+            st.write(f"Benchmarking of metrics for {selected_year} {selected_team}")
 
             # Convert predictions to a DataFrame
             predictions_df = pd.DataFrame.from_dict(predictions, orient="index", columns=["Avg Wins"])
 
             # Add the corresponding metric values from team_data as strings
-            predictions_df["Metric Value"] = predictions_df.index.map(
+            predictions_df["Value"] = predictions_df.index.map(
                 lambda metric: str(team_data[metric].values[0]) if metric in team_data.columns else None
             )
             
-            # Reset the index to make "Metric" a column
+            # Reset the index to make "Metric" a column and rename columns
             predictions_df.reset_index(inplace=True)
             predictions_df.rename(columns={"index": "Metric"}, inplace=True)
-
-            # Reorder columns to Metric, Metric Value, Avg Wins
-            predictions_df = predictions_df[["Metric", "Metric Value", "Avg Wins"]]
+            predictions_df = predictions_df[["Metric", "Value", "Avg Wins"]]
             
-            # Apply the coloring to the "Avg Wins" column
-            styled_predictions_df = predictions_df.style.applymap(
-                color_wins_column, subset=["Avg Wins"]
-            )
-
-            # Set index before applying the style
+            # Set index and use index to apply text colouring
             predictions_df = predictions_df.set_index("Metric")
-
-            # Apply the text coloring to the "Avg Wins" column
             styled_predictions_df = predictions_df.style.applymap(
                 color_wins_column, subset=["Avg Wins"]
             )
             
-            # Display the styled DataFrame
+            # Display the benchmarked metrics dataframe
             st.dataframe(styled_predictions_df)
 
             # Display team metrics
-            st.write(f"Metrics for the selected team: {selected_team}")
+            st.write(f"Metrics for the selected team: {selected_year} {selected_team}")
+            team_data['year'] = team_data['year'].astype(str)
             st.dataframe(team_data.set_index("team"))
         else:
             st.error("Team data is not available.")
             
-        st.write(f"Team-by-team Data for {most_recent_year}")
-        filtered_data['year'] = filtered_data['year'].astype(int)
-        st.dataframe(filtered_data.set_index(filtered_data.columns[0]))    
+        st.write(f"All {most_recent_year} team-by-team data")
+        filtered_data['year'] = filtered_data['year'].astype(str)
+        st.dataframe(filtered_data.set_index(filtered_data.columns[0]))
+        st.write("Historic (2045-64) RZB averages for each metric, by team regular season win record")
+        st.dataframe(smoothed_avg.set_index(smoothed_avg.columns[0]))    
 
-st.write("Historic team averages by number of team wins, smoothed to simplify analysis")
-st.dataframe(smoothed_avg.set_index(smoothed_avg.columns[0]))
