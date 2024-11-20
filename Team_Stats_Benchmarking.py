@@ -3,7 +3,6 @@ import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 
-
 # Function to determine the most recent year
 def get_most_recent_year():
     url_index = "https://therzb.com/RZB/leaguehtml/index.html"
@@ -161,12 +160,54 @@ def color_wins_column(val):
         return "color: #33cc33;"  # Dark Green
     return ""
 
+# function to fill the value of Unit column based on the value of Metric column
+def fill_unit_column(row):
+    if row["Metric"] in ["pythag_wins", "yds_per_game", "ydsvs_per_game", "Pen_per_snap", "Fum_per_snap"]:
+        return "All"
+    elif row["Metric"] in ["Rate", "ypt", "Int_per_Att", "SPct"]:
+        return "Pass"
+    elif row["Metric"] in ["ypc", "KRB_per_Rply"]:
+        return "Run"
+    elif row["Metric"] in ["Rate_vs", "PDPct", "Intvs_per_Att", "ypt_vs", "SPct_vs"]:
+        return "Pass D"
+    elif row["Metric"] in ["KRBvs_per_Rply", "ypc_vs"]:
+        return "Run D"
+    else:
+        return "Spec Tms"
+         
 # load in smoothed averages dataframe
 smoothed_url = "https://raw.githubusercontent.com/fofota/fof_html_scraper/main/smoothed_avg.csv"
 smoothed_avg = pd.read_csv(smoothed_url)
 if 'wins.1' in smoothed_avg.columns:
     smoothed_avg = smoothed_avg.drop(columns=['wins.1'])
 smoothed_avg.reset_index(drop=True, inplace=True)
+
+metric_importance_dict = {
+    'pythag_wins': 5,
+    'yds_per_game': 5,
+    'ydsvs_per_game': 5,
+    'Rate': 5,
+    'ypt': 5,
+    'Rate_vs': 4,
+    'ypc': 3,
+    'Int_per_Att': 3,
+    'PDPct': 3,
+    'PR_avg': 3,
+    'KRB_per_Rply': 3,
+    'Pen_per_snap': 3,
+    'Intvs_per_Att': 2,
+    'SPct': 2,
+    'KR_avg': 2,
+    'ypt_vs': 2,
+    'SPct_vs': 2,
+    'KRBvs_per_Rply': 2,
+    'Net_punt': 2,
+    'OppPR_avg': 2,
+    'Fum_per_snap': 2,
+    'Net_punt_vs': 2,
+    'Punt_for': 2,
+    'OppKR_avg': 2,
+    'ypc_vs': 1}
 
 # Filter and rename columns
 columns_to_keep = {
@@ -252,6 +293,15 @@ rounding_rules = {
     'Punt_for': 1
 }
 
+# load in raw_data dataframe
+raw_data_url = "https://raw.githubusercontent.com/fofota/fof_html_scraper/main/filtered_stats_2045_2063.csv"
+raw_data = pd.read_csv(raw_data_url)
+raw_data.reset_index(drop=True, inplace=True)
+raw_data = raw_data[raw_data['team'] != 'League'] # remove league averages
+raw_data = raw_data[columns_to_include]
+raw_data['year'] = raw_data['year'].astype(str)
+            
+
 # Streamlit App
 st.set_page_config(
     page_title="RZB Team Stats Benchmarking",
@@ -260,7 +310,7 @@ st.set_page_config(
 st.title("RZB Team Stats Benchmarking")
 st.sidebar.header("Select Team to Evaluate")
 
-with st.expander("Use the sidebar to select a team to evaluate. Open here for more on how this tool works"):
+with st.expander("Use the sidebar to select a team to evaluate. Select here for more on how this tool works"):
     st.write('''
         This tool answers the question 'how good is my team' by comparing its statistical performance against historic benchmarks.
         
@@ -336,12 +386,19 @@ if st.sidebar.button("Analyze Team"):
             predictions_df["Value"] = predictions_df.index.map(
                 lambda metric: str(team_data[metric].values[0]) if metric in team_data.columns else None
             )
-            
+                        
             # Reset the index to make "Metric" a column and rename columns
             predictions_df.reset_index(inplace=True)
             predictions_df.rename(columns={"index": "Metric"}, inplace=True)
-            predictions_df = predictions_df[["Metric", "Value", "Avg Wins"]]
             
+            # Add and fill the Unit column
+            predictions_df["Roster Unit"] = predictions_df.apply(fill_unit_column, axis=1)
+            predictions_df = predictions_df[["Metric", "Value", "Avg Wins", "Roster Unit"]]       
+
+            # Add the Metric Importance column using the dictionary
+            predictions_df["Metric Importance"] = predictions_df["Metric"].map(metric_importance_dict)
+            predictions_df["Metric Importance"] = predictions_df["Metric Importance"].apply(lambda x: int(x) if pd.notnull(x) else None)
+
             # Set index and use index to apply text colouring
             predictions_df = predictions_df.set_index("Metric")
             styled_predictions_df = predictions_df.style.applymap(
@@ -362,5 +419,6 @@ if st.sidebar.button("Analyze Team"):
         filtered_data['year'] = filtered_data['year'].astype(str)
         st.dataframe(filtered_data.set_index(filtered_data.columns[0]))
         st.write("Historic (2045-64) RZB averages for each metric, by team regular season win record")
-        st.dataframe(smoothed_avg.set_index(smoothed_avg.columns[0]))    
-
+        st.dataframe(smoothed_avg.set_index(smoothed_avg.columns[0]))
+        st.write("All 2045-64 RZB teams for each metric")
+        st.dataframe(raw_data.set_index(raw_data.columns[0]))    
