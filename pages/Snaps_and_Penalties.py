@@ -1,3 +1,5 @@
+
+import streamlit as st
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
@@ -5,8 +7,6 @@ import os
 import shutil
 from collections import defaultdict
 import re
-import streamlit as st
-
 # Base URL for the schedule page
 schedule_url = "https://therzb.com/RZB/leaguehtml/19schedule.html"
 base_url = "https://therzb.com/RZB/leaguehtml/"

@@ -1,8 +1,5 @@
 import streamlit as st
-st.set_page_config(
-    page_title="Metric Importance",
-    layout='wide'
-)
+
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt

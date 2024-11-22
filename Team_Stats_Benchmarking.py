@@ -1,4 +1,8 @@
 import streamlit as st
+st.set_page_config(
+    page_title="RZB Team Stats Benchmarking",
+    layout='wide'
+)
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
@@ -303,10 +307,6 @@ raw_data['year'] = raw_data['year'].astype(str)
             
 
 # Streamlit App
-st.set_page_config(
-    page_title="RZB Team Stats Benchmarking",
-    layout='wide'
-)
 st.title("RZB Team Stats Benchmarking")
 st.sidebar.header("Select Team to Evaluate")
 

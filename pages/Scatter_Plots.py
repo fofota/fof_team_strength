@@ -1,11 +1,4 @@
 import streamlit as st
-
-# Set the page title and layout
-st.set_page_config(
-    page_title="Scatter Plots",
-    layout='wide'
-)
-
 from Team_Stats_Benchmarking import raw_data
 import matplotlib.pyplot as plt
 import numpy as np
