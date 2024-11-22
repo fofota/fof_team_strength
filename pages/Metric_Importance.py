@@ -1,13 +1,13 @@
-from Team_Stats_Benchmarking import raw_data
 import streamlit as st
-import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
-
 st.set_page_config(
     page_title="Metric Importance",
     layout='wide'
 )
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+from Team_Stats_Benchmarking import raw_data
+import os
 
 # calculate metric importance based on correlation to pythag_wins
 def calculate_metric_importance(abs_corr):
@@ -64,3 +64,12 @@ plt.xticks(rotation=45, ha="right", fontsize=10)  # Rotate x-axis labels
 plt.yticks(fontsize=10)  # Adjust y-axis label font size
 plt.title("Correlation Heatmap", fontsize=16)  # Add title to the heatmap
 st.pyplot(fig)
+
+# results from regression analysis
+st.subheader("Results from Regression Analysis on Pythagorean Wins 2046-63")
+st.write("Variables included vs R Squared")
+# Get the absolute path of the current script
+current_dir = os.path.dirname(os.path.abspath(__file__))
+image_path = os.path.join(current_dir, "regression.png")
+# Display the image
+st.image(image_path, use_container_width=True)
